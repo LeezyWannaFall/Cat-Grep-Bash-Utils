@@ -2,17 +2,10 @@
 
 int main(int argc, char** argv) {
   flags config = flags_parser(argc, argv);
-  if (!config.pattern) {
-    fprintf(stderr, "Error: No pattern provided.\n");
-    return 1;
-  }
+  parserError(config);
   regex_t re;
   int error = regcomp(&re, config.pattern, config.IgnoreRegister);
-  if (error) {
-    perror("Error compiling regex");
-    free(config.pattern);
-    return 1;
-  }
+  regexError(error, config);
   for (int i = optind; i < argc; i++) {
     proccesFile(config, argv[i], &re, argc);
   }
@@ -61,6 +54,19 @@ flags flags_parser(int argc, char** argv) {
   return config;
 }
 
+void parserError(flags config) {
+  if (!config.pattern) {
+    fprintf(stderr, "Error: No pattern provided.\n");
+  }
+}
+
+void regexError(int error, flags config) {
+  if (error) {
+    perror("Error compiling regex");
+    free(config.pattern);
+  }
+}
+
 void proccesFile(flags config, char* path, regex_t* reg, int argc) {
   FILE* f = fopen(path, "r");
   if (!f) {
@@ -71,25 +77,33 @@ void proccesFile(flags config, char* path, regex_t* reg, int argc) {
   int line_counter = 0;
   int match_count = 0;
   while (fgets(lineBuffer, sizeof(lineBuffer), f)) {
-    size_t len = strlen(lineBuffer);
-    int match = regexec(reg, lineBuffer, 0, NULL, 0);
-    if (len > 0 && lineBuffer[len - 1] == '\n') lineBuffer[len - 1] = '\0';
     line_counter++;
-    if ((match == 0 && !config.ShowNonPatternOnly) || (match != 0 && config.ShowNonPatternOnly)) {
-      match_count++;
-      if (config.PatternCountOnly || config.PathPatternOnly) continue;
-      if (config.NumericPatternLines) {
-        if (!config.DisablePathOut && argc > 4) {
-          printf("%s:", path);
-        }
-        printf("%d:", line_counter);
-      }
-      if ((config.IgnoreRegister || config.PatternOnly || config.SkipErrorMessage || config.ShowNonPatternOnly) && argc > 4) {
+    optionsProccesFile(config, lineBuffer, reg, line_counter, &match_count, path, argc);
+  }
+  otherFlags(config, path, match_count, argc);
+}
+
+void optionsProccesFile(flags config, char* lineBuffer, regex_t* reg, int line_counter, int* match_count, char* path, int argc) {
+  size_t len = strlen(lineBuffer);
+  int match = regexec(reg, lineBuffer, 0, NULL, 0);
+  if (len > 0 && lineBuffer[len - 1] == '\n') lineBuffer[len - 1] = '\0';
+  if ((match == 0 && !config.ShowNonPatternOnly) || (match != 0 && config.ShowNonPatternOnly)) {
+    (*match_count)++;
+    if (config.PatternCountOnly || config.PathPatternOnly) return;
+    if (config.NumericPatternLines) {
+      if (!config.DisablePathOut && argc > 4) {
         printf("%s:", path);
       }
-      printf("%s\n", lineBuffer);
+      printf("%d:", line_counter);
     }
+    if ((config.IgnoreRegister || config.PatternOnly || config.SkipErrorMessage || config.ShowNonPatternOnly) && argc > 4) {
+      printf("%s:", path);
+    }
+    printf("%s\n", lineBuffer);
   }
+}
+
+void otherFlags(flags config, char* path, int match_count, int argc) {
   if (config.PatternCountOnly) {
     if (!config.DisablePathOut && argc > 4) {
       printf("%s:", path);
@@ -99,5 +113,4 @@ void proccesFile(flags config, char* path, regex_t* reg, int argc) {
   if (config.PathPatternOnly && match_count > 0) {
     printf("%s\n", path);
   }
-  fclose(f);
 }
