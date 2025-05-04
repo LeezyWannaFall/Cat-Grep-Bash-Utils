@@ -1,5 +1,10 @@
 # SimpleBash Utils
 
+![C](https://img.shields.io/badge/C-00599C?style=for-the-badge&logo=c&logoColor=white)
+![Linux](https://img.shields.io/badge/Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black)
+![Make](https://img.shields.io/badge/Make-003366?style=for-the-badge&logo=cmake&logoColor=white)
+![Unit Tests](https://img.shields.io/badge/Unit_Tests-Passing-success?style=for-the-badge)
+
 Реализация базовых консольных утилит UNIX: cat и grep.
 
 ## Описание
